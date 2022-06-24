@@ -1,0 +1,144 @@
+<!DOCTYPE HTML> 
+
+<!-- Debut de la page HTML  --> 
+<html> 
+
+	<!-- Debut entete --> 
+	<head> 
+
+		<meta charset="utf-8" /> <!-- Encodage de la page  --> 
+		<title>JavaScript: Tracé de courbe dans un Canvas</title> <!-- Titre de la page --> 
+
+		<!-- Debut du code Javascript  --> 
+		<script language="javascript" type="text/javascript"> 
+		 
+		// code javascript par X. HINAULT - www.mon-club-elec.fr - tous droits reserves - 2013 - GPL v3 
+
+		// variables / objets globaux - a declarer avant les fonctions pour eviter problemes de portee 
+		var canvas= null; // pour objet Canvas 
+		var contextCanvas = null; // pour objet context Canvas 
+		var textInputX=null; 		 
+		var textInputY=null; 
+
+		var delai=10; // intervalle a utiliser en ms 
+		var compt=0; // variable de comptage 
+		var x=0; // variable position 
+		var y=0; // variable position 
+		var xo=0; // variable position n-1 
+		var yo=0; // variable position n-1 
+
+
+		window.onload = function() { // fonction au lancement 
+
+			canvas = document.getElementById("nomCanvas"); // declare objet canvas a partir id = nom 
+			textInputX= document.getElementById("valeurX"); // declare objet champ text a partir id = nom 
+			textInputY= document.getElementById("valeurY"); // declare objet champ text a partir id = nom 
+
+			canvas.width = 360; // largeur canvas 
+			canvas.height = 300; // hauteur canvas 
+
+			textInputX.value=x; // fixe la valeur du champ 
+			textInputY.value=y; // fixe la valeur du champ 
+
+			if (canvas.getContext){ // la fonction getContext() renvoie True si canvas accessible 
+
+ 				contextCanvas = canvas.getContext("2d"); // objet context global permettant acces aux fonctions de dessin 
+
+				// le code graphique ci-dessous 
+
+				// carre  de la taille du canvas 
+				contextCanvas.fillStyle = "rgb(255,255,200)"; // couleur de remplissage rgb 0-255 
+				contextCanvas.fillRect (0, 0, canvas.width, canvas.height); // rectangle 
+
+				// position initiale 
+				contextCanvas.fillStyle = "rgb(0,0,255)"; // couleur de remplissage rgb 0-255 
+				contextCanvas.fillRect (x,canvas.height-y-1, 1,1); // context.fillRect(x,y,width,height) - dessine 1 pixel 
+
+				// parametres graphique 
+				contextCanvas.lineWidth=1; // largeur ligne avec lineTo() 
+				contextCanvas.strokeStyle = "rgb(0,0,255)"; // couleur de pourtour rgb 0-255 
+
+ 				// intervalle de rafraichissement 
+ 				//interval=window.setInterval(draw, 100); // fixe intervalle en ms et fonction a executer 
+ 				window.setTimeout(draw, delai); // fixe intervalle en ms et fonction a executer - alternative 
+
+			} // fin si canvas existe 
+
+			else { 
+				window.alert("Canvas non disponible")// code si canvas non disponible 
+			} // fin else 
+
+		} // fin window.onload
+
+
+		function draw() { // fonction qui est appelee  a intervalle regulier 
+
+			if (contextCanvas!=null) { 
+
+				// -- coordonnees x,y courantes 
+				x=x+1; // incremente x 
+				if (x>canvas.width)x=0; // RAZ x 
+
+				y=(canvas.height-1)/2+ (Math.cos(2*x * Math.PI/180) * (canvas.height-1)/2) ; // valeur de y = cos (x) 
+        //y = x * x
+				
+        y=Math.round(y); // valeur entiere 
+
+				if (x==0) { // reinitialisation dessin si x a ete reinitialise 
+
+					contextCanvas.moveTo(x,y); // deplace sans trace 
+
+					// rect plein  de la taille du canvas = efface canvas pour nouveau trace 
+					contextCanvas.fillStyle = "rgb(255,255,200)"; // couleur de remplissage rgb 0-255 
+					contextCanvas.fillRect (0, 0, canvas.width, canvas.height); // rectangle 
+
+					xo=0; // RAZ xo point n-1					 
+
+				} // fin if x==0 
+
+				else { // si x diff 0 : on trace la ligne jusqu'au point courant 
+					contextCanvas.beginPath(); // reinitialise trace - sinon toutes les actions de dessins sont reexecutees 
+					contextCanvas.moveTo(xo,canvas.height-1-yo); // trace virtuellement la ligne 
+					contextCanvas.lineTo(x,canvas.height-1-y); // trace virtuellement la ligne 
+					contextCanvas.closePath(); // reinitialise trace - sinon toutes les actions de dessins sont reexecutees 
+
+					contextCanvas.stroke(); // trace le pourtour - ne pas oublier 
+
+					textInputX.value=x; // fixe la valeur du champ 
+					textInputY.value=y; // fixe la valeur du champ 	 
+					xo=x; // memorise n-1 
+					yo=y; // memorise n-1 
+
+				} // fin else 
+
+			  window.setTimeout(draw, delai); // fixe nouvel intervalle en ms et fonction a executer 
+
+			}	// fin if context !=null 
+
+		} // fin draw	
+
+		//--> 
+  </script> 
+		<!-- Fin du code Javascript -->     
+
+	</head> 
+	<!-- Fin entete --> 
+
+	<!-- Debut Corps de page HTML --> 
+	<body > 
+
+ 		<canvas id="nomCanvas" width="300" height="300"></canvas> 
+
+		<br /> 
+
+ 		X=<input type="text" id="valeurX" /> 
+ 		Y=<input type="text" id="valeurY" />			 
+
+		<br /> 
+		Exemple de courbe avec un Canvas
+
+	</body> 
+	<!-- Fin de corps de page HTML  --> 
+
+</html> 
+<!-- Fin de la page HTML  -->	 
