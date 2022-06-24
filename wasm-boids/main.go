@@ -66,7 +66,7 @@ func (this *Cow) distance(boid Cow) float64 {
 	return math.Sqrt(distX * distX + distY * distY)
 }
 
-func (this *Cow) moveAway (boids []Cow, minDistance float64) {
+func (this *Cow) moveAway (boids []*Cow, minDistance float64) {
 	var distanceX = 0.0
 	var distanceY = 0.0
 	var numClose = 0.0
@@ -82,7 +82,7 @@ func (this *Cow) moveAway (boids []Cow, minDistance float64) {
 			continue
 		} 
 
-		var distance = this.distance(boid)
+		var distance = this.distance(*boid)
 
 		fmt.Println("distance:", distance, "minDistance", minDistance)
 
@@ -110,12 +110,91 @@ func (this *Cow) moveAway (boids []Cow, minDistance float64) {
 
 	if(numClose == 0) {
 		fmt.Println("nothing")
-	} else {
-		fmt.Println("something")
-		this.xVelocity -= distanceX / 5
-		this.yVelocity -= distanceY / 5
+		return
+	} 
+	fmt.Println("something")
+	this.xVelocity -= distanceX / 5
+	this.yVelocity -= distanceY / 5
+	
+}
+
+func (this *Cow) moveCloser (boids []*Cow, distance float64) {
+	if(len(boids) < 1) { return }
+
+	var avgX = 0.0
+	var avgY = 0.0
+
+	for i := 0; i < len(boids); i++ {
+		var boid = boids[i]
+		if(boid.x == this.x && boid.y == this.y) {continue }
+		if(this.distance(*boid) > distance) { continue }
+
+		avgX += (this.x - boid.x)
+		avgY += (this.y - boid.y)
+		//boid = null
 	}
 
+	avgX /= float64(len(boids))
+	avgY /= float64(len(boids))
+
+	distance = math.Sqrt((avgX * avgX) + (avgY * avgY)) * -1.0
+	
+	if(distance == 0.0) {
+		return
+	}
+
+	this.xVelocity= math.Min(this.xVelocity + (avgX / distance) * 0.15, this.constraints.maxVelocity)
+	this.yVelocity = math.Min(this.yVelocity + (avgY / distance) * 0.15, this.constraints.maxVelocity)
+}
+
+func (this *Cow) moveWith (boids []*Cow, distance float64) {
+	if(len(boids) < 1) { return }
+
+	// calculate the average velocity of the other boids
+	var avgX = 0.0
+	var avgY = 0.0
+
+	for i := 0; i < len(boids); i++ {
+		var boid = boids[i]
+		if(boid.x == this.x && boid.y == this.y) { continue }
+		if(this.distance(*boid) > distance) { continue }
+
+		avgX += boid.xVelocity
+		avgY += boid.yVelocity
+		//boid = null
+	}
+	avgX /= float64(len(boids))
+	avgY /= float64(len(boids))
+
+	distance = math.Sqrt((avgX * avgX) + (avgY * avgY)) * 1.0
+	if(distance == 0.0) { return }
+
+	this.xVelocity= math.Min(this.xVelocity + (avgX / distance) * 0.05, this.constraints.maxVelocity)
+	this.yVelocity = math.Min(this.yVelocity + (avgY / distance) * 0.05, this.constraints.maxVelocity)
+}
+
+func (this *Cow) draw( formerX float64, formerY float64) {
+	// 🚧 WIP
+	fmt.Println("🐮", this.nickName, this.x, this.y)
+}
+
+// don't use this method
+func (this *Cow) start(boids []*Cow) {
+	//boids = append(boids, this)
+
+	fmt.Println(len(boids))
+
+	for i := 1; i <= 10; i++ {
+		var formerX = this.x
+		var formerY = this.y
+	
+		this.moveWith(boids, 300.0)
+		this.moveCloser(boids, 300.0)
+		this.moveAway(boids, 15.0)
+		this.move()
+	
+		this.draw(formerX, formerY)
+  }
 
 }
 
@@ -145,6 +224,28 @@ func main() {
 
 	sam := Cow{}
 	sam.initialize("Sam", 10.0, 10.0, constraints)
+
+	var cowsList []*Cow
+	cowsList = append(cowsList, &sam)
+	cowsList = append(cowsList, &bob)
+
+	for i := 1; i <= 10; i++ {
+		for _, cow := range cowsList {
+			var formerX = cow.x
+			var formerY = cow.y
+
+			cow.moveWith(cowsList, 300.0)
+			cow.moveCloser(cowsList, 300.0)
+			cow.moveAway(cowsList, 15.0)
+			cow.move()
+		
+			cow.draw(formerX, formerY)
+		}
+	}
+	//bob.start(cowsList)
+	//sam.start(cowsList)
+	
+	/*
 	sam.move()
 	sam.move()
 
@@ -160,8 +261,10 @@ func main() {
 	fmt.Println(h.greetings)
 
 	fmt.Println(sam.x, sam.y, sam.xVelocity, sam.yVelocity)
-	sam.moveAway([]Cow{sam, bob}, 3.0)
+	sam.moveAway([]*Cow{&sam, &bob}, 3.0)
 	fmt.Println(sam.x, sam.y, sam.xVelocity, sam.yVelocity)
+	*/
+
 
 
 	<-make(chan bool)
