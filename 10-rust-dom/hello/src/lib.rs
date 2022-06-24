@@ -348,7 +348,7 @@ pub fn run() -> Result<(), JsValue> {
     body.append_child(&h1)?;
     body.append_child(&h2)?;
 
-    
+    // Try only with the existing Cow
     while true {
         let cows_iter = cows_list.iter();
         for cow in cows_iter {
