@@ -1,9 +1,14 @@
 <!DOCTYPE html>
 <html>
-<head><title>boids</title>
+<head>
+  <title>boids</title>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" href="my.css">
 
 </head>
 <body>
+  <h1>Only JavaScript</h1>
+
 <canvas id="canvas" width="800" height="800"></canvas>
 
 <script type="text/javascript">
@@ -184,9 +189,9 @@
 
         this.draw(canvas, context, formerX, formerY)
 
-        console.log(this.nickName, this.x, this.y, cowsList)
+        //console.log(this.nickName, this.x, this.y, cowsList)
 
-      }, 0)    
+      }, 1)    
 
     }
 
@@ -195,18 +200,27 @@
   let canvas = document.getElementById('canvas');
   let context = canvas.getContext('2d');
 
-  for (let index = 0; index < 7; index++) {
+  for (let index = 0; index < 30; index++) {
     let cow = new Cow({nickName:"bob"+index, x:10, y:10, constraints:constraints})
-    cow.start(cowsList, canvas, context)
+    cowsList.push(cow)
+    //cow.start(cowsList, canvas, context)
   }
 
-  /*
-  let bob = new Cow({nickName:"bob", x:10, y:10, size:1, constraints:constraints})
-  let sam = new Cow({nickName:"sam", x:5, y:5, size:1, constraints:constraints})
+  setInterval(() => {
+    cowsList.forEach(cow => {
+      let formerX = cow.x
+      let formerY = cow.y
 
-  bob.start(cowsList)
-  sam.start(cowsList)
-  */
+      cow.moveWith(cowsList, 300);
+      cow.moveCloser(cowsList, 300);
+      cow.moveAway(cowsList, 15);      
+      cow.move();
+
+      cow.draw(canvas, context, formerX, formerY)
+    })
+
+  },1)
+
 
 
 

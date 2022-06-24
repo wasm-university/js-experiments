@@ -1,18 +1,26 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"math"
-	//"syscall/js"
+	"strconv"
+	"syscall/js"
+	"time"
 )
 
-type human struct {
-	name      string
-	greetings string
-}
+var (
+	// js.Value can be any JS object/type/constructor
+	window, doc, body, canvas, context js.Value
+	windowSize struct{ w, h float64 }
+)
 
-func (h *human) setGreetings(txt string) {
-	h.greetings = "😃 Hello " + txt
+type Circle struct {
+	x float64
+	y float64
+	radius float64
+	color string
+	borderWidth float64
+	borderColor string
 }
 
 type Constraints struct {
@@ -78,13 +86,13 @@ func (this *Cow) moveAway (boids []*Cow, minDistance float64) {
 		var boid = boids[i];
 
 		if(boid.x == this.x && boid.y == this.y) {
-			fmt.Println("continue")
+			//fmt.Println("continue")
 			continue
 		} 
 
 		var distance = this.distance(*boid)
 
-		fmt.Println("distance:", distance, "minDistance", minDistance)
+		//fmt.Println("distance:", distance, "minDistance", minDistance)
 
 		if(distance < minDistance) {
 			numClose++
@@ -109,10 +117,10 @@ func (this *Cow) moveAway (boids []*Cow, minDistance float64) {
 	}
 
 	if(numClose == 0) {
-		fmt.Println("nothing")
+		//fmt.Println("nothing")
 		return
 	} 
-	fmt.Println("something")
+	//fmt.Println("something")
 	this.xVelocity -= distanceX / 5
 	this.yVelocity -= distanceY / 5
 	
@@ -173,34 +181,61 @@ func (this *Cow) moveWith (boids []*Cow, distance float64) {
 	this.yVelocity = math.Min(this.yVelocity + (avgY / distance) * 0.05, this.constraints.maxVelocity)
 }
 
-func (this *Cow) draw( formerX float64, formerY float64) {
+func (this *Cow) draw(canvas js.Value, context js.Value, formerX float64, formerY float64) {
 	// 🚧 WIP
-	fmt.Println("🐮", this.nickName, this.x, this.y)
-}
+	//fmt.Println("🐮", this.nickName, this.x, this.y)
 
-// don't use this method
-func (this *Cow) start(boids []*Cow) {
-	//boids = append(boids, this)
-
-	fmt.Println(len(boids))
-
-	for i := 1; i <= 10; i++ {
-		var formerX = this.x
-		var formerY = this.y
+	drawCircle :=
+		func(circle Circle) {
+			context.Call("beginPath")
+			context.Call("arc", circle.x, circle.y, circle.radius, 0, 2 * math.Pi, false)
+			context.Set("fillStyle", circle.color)
+			context.Call("fill")
+			context.Set("lineWidth", circle.borderWidth)
+			context.Set("strokeStyle", circle.borderColor)
+			context.Call("stroke")
+		}
 	
-		this.moveWith(boids, 300.0)
-		this.moveCloser(boids, 300.0)
-		this.moveAway(boids, 15.0)
-		this.move()
-	
-		this.draw(formerX, formerY)
-  }
+	previousCircle := Circle{
+		x: formerX,
+		y: formerY,
+		radius: 4.0,
+		color: "white",
+		borderWidth: 2.0,
+		borderColor: "white",
+	}
+
+	currentCircle := Circle{
+		x: this.x,
+		y: this.y,
+		radius: 4.0,
+		color: "blue",
+		borderWidth: 1.0,
+		borderColor: "blue",
+	}
+
+	drawCircle(previousCircle)
+	drawCircle(currentCircle)
+
+
 
 }
-
 
 
 func main() {
+
+	window = js.Global()
+	doc = window.Get("document")
+	body = doc.Get("body")
+	canvas = doc.Call("getElementById", "canvas")
+	
+	context = canvas.Call("getContext", "2d")
+
+	/*
+  let canvas = document.getElementById('canvas');
+  let context = canvas.getContext('2d');
+	*/
+
 
 	constraints := Constraints{
 		border:      5.0,
@@ -219,6 +254,8 @@ func main() {
 		yVelocity: -1.0,
 	}
 	*/
+
+	/*
 	bob := Cow{}
 	bob.initialize("Bob", 10.0, 10.0, constraints)
 
@@ -228,8 +265,19 @@ func main() {
 	var cowsList []*Cow
 	cowsList = append(cowsList, &sam)
 	cowsList = append(cowsList, &bob)
+	*/
 
-	for i := 1; i <= 10; i++ {
+	var cowsList []*Cow
+
+	for i := 0; i < 30; i++ {
+		var cow = Cow{}
+		cow.initialize("Bob"+strconv.Itoa(i), 10.0, 10.0, constraints)
+		cowsList = append(cowsList, &cow)
+	}
+
+
+
+	for true {
 		for _, cow := range cowsList {
 			var formerX = cow.x
 			var formerY = cow.y
@@ -239,8 +287,9 @@ func main() {
 			cow.moveAway(cowsList, 15.0)
 			cow.move()
 		
-			cow.draw(formerX, formerY)
+			cow.draw(canvas, context, formerX, formerY)
 		}
+		time.Sleep(1 * time.Millisecond)
 	}
 	//bob.start(cowsList)
 	//sam.start(cowsList)
@@ -271,4 +320,8 @@ func main() {
 
 	
 
+}
+
+func String(i int) {
+	panic("unimplemented")
 }
