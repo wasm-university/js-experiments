@@ -1,5 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use std::{thread, time::Duration};
+
 
 use serde::{Serialize, Deserialize};
 
@@ -85,7 +87,7 @@ impl Cow {
                 continue;
             }
 
-            let mut distance = self.distance(*boid);
+            let distance = self.distance(*boid);
 
             if distance < min_distance {
                 num_close +=1.0;
@@ -188,7 +190,7 @@ impl Cow {
         }
     }
 
-    fn draw(&mut self, canvas: &web_sys::HtmlCanvasElement, context: &web_sys::CanvasRenderingContext2d, former_x: f64, former_y: f64) {
+    fn draw(&mut self, context: &web_sys::CanvasRenderingContext2d, former_x: f64, former_y: f64) {
 
         let draw_circle = |circle: Circle|{
             context.begin_path();
@@ -309,26 +311,8 @@ pub fn run() -> Result<(), JsValue> {
     cows_list.push(bob);
     cows_list.push(sam);
 
-    let mut former_x = bob.x;
-    let mut former_y = bob.y;
 
-    bob.move_with(&cows_list, 300.0);
-    bob.move_closer(&cows_list, 300.0);
-    bob.move_away(&cows_list, 15.0);
-    bob.moving();
-
-    bob.draw(&canvas, &context, former_x, former_y);
-
-    former_x = sam.x;
-    former_y = sam.y;
-
-    sam.move_with(&cows_list, 300.0);
-    sam.move_closer(&cows_list, 300.0);
-    sam.move_away(&cows_list, 15.0);
-    sam.moving();
-
-    sam.draw(&canvas, &context, former_x, former_y);
-
+    /*
     let mut i = 0;
 
     while i < 30 {
@@ -343,6 +327,7 @@ pub fn run() -> Result<(), JsValue> {
         cows_list.push(cow)
 
     }
+    */
 
 
     body.append_child(&h1)?;
@@ -350,7 +335,32 @@ pub fn run() -> Result<(), JsValue> {
 
     // Try only with the existing Cow
     while true {
+
+        let mut former_x = bob.x;
+        let mut former_y = bob.y;
+    
+        bob.move_with(&cows_list, 300.0);
+        bob.move_closer(&cows_list, 300.0);
+        bob.move_away(&cows_list, 15.0);
+        bob.moving();
+    
+        bob.draw(&context, former_x, former_y);
+    
+        former_x = sam.x;
+        former_y = sam.y;
+    
+        sam.move_with(&cows_list, 300.0);
+        sam.move_closer(&cows_list, 300.0);
+        sam.move_away(&cows_list, 15.0);
+        sam.moving();
+    
+        sam.draw(&context, former_x, former_y);
+    
+        thread::sleep(Duration::from_millis(100));
+
+        /*
         let cows_iter = cows_list.iter();
+
         for cow in cows_iter {
 
             cow.move_with(&cows_list, 300.0);
@@ -359,8 +369,9 @@ pub fn run() -> Result<(), JsValue> {
             cow.move_away(&cows_list, 15.0);
             cow.moving();
         
-            //cow.draw(&canvas, &context, former_x, former_y);
+            cow.draw(&canvas, &context, former_x, former_y);
         }
+        */
     }
     
     
