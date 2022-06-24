@@ -1,4 +1,6 @@
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+
 use serde::{Serialize, Deserialize};
 
 
@@ -72,7 +74,7 @@ impl Cow {
         (dist_x*dist_x + dist_y*dist_y).sqrt()
     }
 
-    fn move_away(&mut self, boids: Vec<Cow>, min_distance: f64) {
+    fn move_away(&mut self, boids: &Vec<Cow>, min_distance: f64) {
         let mut distance_x = 0.0;
         let mut distance_y = 0.0;
         let mut num_close = 0.0;
@@ -116,7 +118,7 @@ impl Cow {
         }
     }
 
-    fn move_closer(&mut self, boids: Vec<Cow>, distance: f64) {
+    fn move_closer(&mut self, boids: &Vec<Cow>, distance: f64) {
         if boids.len() < 1 {
             // do nothing
         } else {
@@ -151,6 +153,88 @@ impl Cow {
         }
     }
 
+    fn move_with(&mut self, boids: &Vec<Cow>, distance: f64) {
+        if boids.len() < 1 {
+            // do nothing
+        } else {
+            let mut avg_x = 0.0;
+            let mut avg_y = 0.0;
+
+            for boid in boids.iter() {
+                if boid.x == self.x && boid.y == self.y {
+                    continue;
+                }
+                if self.distance(*boid) > distance {
+                    continue;
+                }
+
+                avg_x += boid.x_velocity;
+                avg_y += boid.y_velocity;
+            }
+
+            avg_x /= boids.len() as f64;
+            avg_y /= boids.len() as f64;
+
+            let avg_distance = (avg_x*avg_x+avg_y*avg_y).sqrt() * 1.0;
+
+            if avg_distance == 0.0 {
+             
+            } else {
+                self.x_velocity = (self.x_velocity + (avg_x/avg_distance) * 0.05).min(self.constraints.max_velocity);
+                self.y_velocity = (self.y_velocity + (avg_y/avg_distance) * 0.05).min(self.constraints.max_velocity);
+
+            }
+
+        }
+    }
+
+    fn draw(&mut self, canvas: &web_sys::HtmlCanvasElement, context: &web_sys::CanvasRenderingContext2d, former_x: f64, former_y: f64) {
+
+        let draw_circle = |circle: Circle|{
+            context.begin_path();
+            context.arc(
+                circle.x.into(),
+                circle.y.into(),
+                circle.radius.into(),
+                0.0,
+                2.0 * std::f64::consts::PI,
+            ).unwrap();
+
+            context.set_fill_style(&circle.color.into());
+            context.fill();
+
+            context.set_line_width(circle.border_width.into());
+            context.set_stroke_style(&circle.border_color.into());
+
+            context.stroke();
+            
+        };
+
+        let previous_circle = Circle {
+            x: former_x,
+            y: former_y,
+            radius: 4.0,
+            color: String::from("white"),
+            border_width: 2.0,
+            border_color: 
+            String::from("white"),
+        };
+
+        let current_circle = Circle {
+            x: former_x,
+            y: former_y,
+            radius: 4.0,
+            color: String::from("green"),
+            border_width: 1.0,
+            border_color: 
+            String::from("green"),
+        };
+
+        draw_circle(previous_circle);
+        draw_circle(current_circle);
+
+
+    }
 
 
 }
@@ -166,12 +250,25 @@ pub fn run() -> Result<(), JsValue> {
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
 
+    let canvas = document
+        .get_element_by_id("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()?;
+    
+    let context = canvas
+        .get_context("2d")?
+        .unwrap()
+        .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
+
+
+
     let constraints = Constraints {
         border:      5.0,
 		width:       800.0,
 		height:      800.0,
 		max_velocity: 5.0
     };
+
     let mut bob = Cow {
         //nick_name: String::from("Bob"),
         x:10.0,
@@ -187,8 +284,8 @@ pub fn run() -> Result<(), JsValue> {
 
     let mut sam = Cow {
         //nick_name: String::from("Sam"),
-        x:10.0,
-        y:10.0,
+        x:30.0,
+        y:30.0,
         constraints: constraints, 
         x_velocity: 1.0, 
         y_velocity: -1.0
@@ -207,22 +304,68 @@ pub fn run() -> Result<(), JsValue> {
     let h2 = document.create_element("h2")?;
     h2.set_text_content(Some(&bob.x.to_string()));
 
-    let cows_list = vec![bob, sam];
-    bob.move_away(cows_list, 15.0);
+    let mut cows_list: Vec<Cow> = vec![];
 
-    let h2_again = document.create_element("h2")?;
-    h2_again.set_text_content(Some(&bob.distance(sam).to_string()));
+    cows_list.push(bob);
+    cows_list.push(sam);
 
-    
+    let mut former_x = bob.x;
+    let mut former_y = bob.y;
 
-    //let mut cows_list: Vec<Cow> = vec![bob];
+    bob.move_with(&cows_list, 300.0);
+    bob.move_closer(&cows_list, 300.0);
+    bob.move_away(&cows_list, 15.0);
+    bob.moving();
 
-    
+    bob.draw(&canvas, &context, former_x, former_y);
+
+    former_x = sam.x;
+    former_y = sam.y;
+
+    sam.move_with(&cows_list, 300.0);
+    sam.move_closer(&cows_list, 300.0);
+    sam.move_away(&cows_list, 15.0);
+    sam.moving();
+
+    sam.draw(&canvas, &context, former_x, former_y);
+
+    let mut i = 0;
+
+    while i < 30 {
+        let cow = Cow {
+            x:10.0,
+            y:100.0,
+            constraints: constraints, 
+            x_velocity: 1.0, 
+            y_velocity: -1.0
+        };
+        i = i + 1;
+        cows_list.push(cow)
+
+    }
 
 
     body.append_child(&h1)?;
     body.append_child(&h2)?;
-    body.append_child(&h2_again)?;
+
+    
+    while true {
+        let cows_iter = cows_list.iter();
+        for cow in cows_iter {
+
+            cow.move_with(&cows_list, 300.0);
+            cow.move_closer(&cows_list, 300.0);
+
+            cow.move_away(&cows_list, 15.0);
+            cow.moving();
+        
+            //cow.draw(&canvas, &context, former_x, former_y);
+        }
+    }
+    
+    
+
+
 
 
     Ok(())
