@@ -1,23 +1,8 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use std::{thread, time::Duration};
+use std::collections::LinkedList;
 
-
-use serde::{Serialize, Deserialize};
-
-
-#[derive(Serialize, Deserialize)]
-pub struct Message {
-    pub text: String,
-    pub author: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Response {
-    pub text: String,
-    pub author: String,
-    pub message_text: String,
-}
 
 struct Circle {
     x: f64,
@@ -38,9 +23,11 @@ struct Constraints {
 
 #[derive(Clone, Copy)]
 struct Cow {
-    //nick_name: String,
+    id: u64,
     x: f64,
     y: f64,
+    former_x: f64,
+    former_y: f64,
     constraints: Constraints,
     x_velocity: f64,
     y_velocity: f64
@@ -48,27 +35,6 @@ struct Cow {
 
 
 impl Cow {
-    fn moving(&mut self) {
-        self.x += self.x_velocity;
-        self.y += self.y_velocity;
-
-        if self.x <= self.constraints.border || self.x >= self.constraints.width - self.constraints.border {
-            self.x -= self.x_velocity;
-            self.x = self.x.max(self.constraints.border);
-            self.x = self.x.min(self.constraints.width - self.constraints.border);
-            self.x_velocity = -self.x_velocity;
-            self.x += self.x_velocity;
-        }
-
-        if self.y <= self.constraints.border || self.y >= self.constraints.height - self.constraints.border {
-            self.y -= self.y_velocity;
-            self.y = self.y.max(self.constraints.border);
-            self.y = self.y.min(self.constraints.height - self.constraints.border);
-            self.y_velocity = -self.y_velocity;
-            self.y += self.y_velocity
-        }
-
-    }
 
     fn distance(&mut self, boid: Cow) -> f64 {
         let dist_x = self.x - boid.x;
@@ -76,122 +42,319 @@ impl Cow {
         (dist_x*dist_x + dist_y*dist_y).sqrt()
     }
 
-    fn move_away(&mut self, boids: &Vec<Cow>, min_distance: f64) {
+}
+
+
+
+// Called by our JS entry point to run the example
+#[wasm_bindgen(start)]
+pub fn run() -> Result<(), JsValue> {
+    // Use `web_sys`'s global `window` function to get a handle on the global
+    // window object.
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+    let body = document.body().expect("document should have a body");
+
+    let h1 = document.create_element("h1")?;
+    
+
+    let canvas = document
+        .get_element_by_id("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()?;
+    
+    let context = canvas
+        .get_context("2d")?
+        .unwrap()
+        .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
+
+
+    let mut cows_list: LinkedList<Cow> = LinkedList::new();
+
+    let constraints = Constraints {
+        border:      5.0,
+        width:       800.0,
+        height:      800.0,
+        max_velocity: 5.0
+    };
+    
+    let mut i = 0;
+    
+    while i < 55 {
+        let cow = Cow {
+            id:i,
+            x:10.0,
+            y:10.0,
+            former_x:10.0,
+            former_y:10.0,
+            constraints: constraints,
+            x_velocity: 1.0,
+            y_velocity: -1.0,
+        };
+        i = i + 1;
+        cows_list.push_back(cow)
+    }
+
+
+    let mut index = 0;
+    while index < 5 {
+      //============================================
+  
+      let cows_list_move_with: LinkedList<Cow> = cows_list.iter().map(|cow| {
+  
+        let mut current_cow = Cow { // self
+          id:cow.id,
+          x:cow.x,
+          y:cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: cow.constraints,
+          x_velocity: cow.x_velocity,
+          y_velocity: cow.y_velocity,
+        };
+  
+        let mut avg_x = 0.0;
+        let mut avg_y = 0.0;
+  
+        // calculate the distance
+        cows_list.iter().for_each(|cow| {
+          if cow.x == current_cow.x && cow.y == current_cow.y {
+            //println!("1️⃣");
+            if current_cow.distance(*cow) > 300.0 {
+              //println!("2️⃣");
+              avg_x += cow.x_velocity;
+              avg_y += cow.y_velocity;
+            }
+          }
+        });
+  
+        avg_x /= cows_list.len() as f64;
+        avg_y /= cows_list.len() as f64;
+  
+        //println!("3️⃣ {} {}",avg_x, avg_y);
+  
+        let avg_distance = (avg_x*avg_x+avg_y*avg_y).sqrt() * 1.0;
+  
+        //println!("🖐️ avg_distance {}", avg_distance);
+  
+        if avg_distance == 0.0 {
+  
+        } else {
+          current_cow.x_velocity = (current_cow.x_velocity + (avg_x/avg_distance) * 0.05).min(current_cow.constraints.max_velocity);
+          current_cow.y_velocity = (current_cow.y_velocity + (avg_y/avg_distance) * 0.05).min(current_cow.constraints.max_velocity);
+  
+          //println!("🖐️ x_velocity {} y_velocity {}",current_cow.y_velocity, current_cow.y_velocity);
+        }
+  
+        Cow {
+          id:cow.id,
+          x:cow.x,
+          y:cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: cow.constraints,
+          x_velocity: current_cow.x_velocity,
+          y_velocity: current_cow.y_velocity,
+        }
+      }).collect();
+  
+      /*
+      cows_list_move_with.iter().for_each(|cow| {
+        println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
+      });
+      */
+  
+      let cows_list_move_closer: LinkedList<Cow> = cows_list_move_with.iter().map(|cow| {
+  
+        let mut current_cow = Cow { // self
+          id:cow.id,
+          x:cow.x,
+          y:cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: cow.constraints,
+          x_velocity: cow.x_velocity,
+          y_velocity: cow.y_velocity,
+        };
+  
+        let mut avg_x = 0.0;
+        let mut avg_y = 0.0;
+  
+        // calculate the distance
+        cows_list.iter().for_each(|cow| {
+          if cow.x == current_cow.x && cow.y == current_cow.y {
+            //println!("1️⃣");
+            if current_cow.distance(*cow) > 300.0 {
+              //println!("2️⃣");
+              //avg_x += cow.x_velocity;
+              //avg_y += cow.y_velocity;
+  
+              avg_x += current_cow.x - cow.x;
+              avg_y += current_cow.y - cow.y;
+            }
+          }
+        });
+  
+        avg_x /= cows_list.len() as f64;
+        avg_y /= cows_list.len() as f64;
+  
+        //println!("3️⃣ {} {}",avg_x, avg_y);
+  
+        //let avg_distance = (avg_x*avg_x+avg_y*avg_y).sqrt() * 1.0;
+        let avg_distance = (avg_x*avg_x+avg_y*avg_y).sqrt() * -1.0;
+  
+  
+        //println!("🖐️ avg_distance {}", avg_distance);
+  
+        if avg_distance == 0.0 {
+  
+        } else {
+          //current_cow.x_velocity = (current_cow.x_velocity + (avg_x/avg_distance) * 0.05).min(current_cow.constraints.max_velocity);
+          //current_cow.y_velocity = (current_cow.y_velocity + (avg_y/avg_distance) * 0.05).min(current_cow.constraints.max_velocity);
+          current_cow.x_velocity = (current_cow.x_velocity + (avg_x/avg_distance) * 0.15).min(current_cow.constraints.max_velocity);
+          current_cow.y_velocity = (current_cow.y_velocity + (avg_y/avg_distance) * 0.15).min(current_cow.constraints.max_velocity);
+  
+          //println!("🖐️ x_velocity {} y_velocity {}",current_cow.y_velocity, current_cow.y_velocity);
+        }
+  
+        Cow {
+          id:cow.id,
+          x:cow.x,
+          y:cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: cow.constraints,
+          x_velocity: current_cow.x_velocity,
+          y_velocity: current_cow.y_velocity,
+        }
+  
+      }).collect();
+  
+      /*
+      cows_list_move_closer.iter().for_each(|cow| {
+        println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
+      });
+      */
+  
+  
+      let cows_list_move_away: LinkedList<Cow> = cows_list_move_closer.iter().map(|cow| {
+  
+        let mut current_cow = Cow { // self
+          id:cow.id,
+          x:cow.x,
+          y:cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: cow.constraints,
+          x_velocity: cow.x_velocity,
+          y_velocity: cow.y_velocity,
+        };
+  
         let mut distance_x = 0.0;
         let mut distance_y = 0.0;
         let mut num_close = 0.0;
-
-        for boid in boids.iter() {
-
-            if boid.x == self.x && boid.y == self.y {
-                continue;
-            }
-
-            let distance = self.distance(*boid);
-
+  
+        cows_list.iter().for_each(|cow| {
+  
+          if cow.x == current_cow.x && cow.y == current_cow.y {
+            let min_distance= 15.0;
+            let distance = current_cow.distance(*cow);
+  
             if distance < min_distance {
-                num_close +=1.0;
-                let mut xdiff = self.x - boid.x;
-                let mut ydiff = self.y - boid.y;
-
-                if xdiff >= 0.0 {
-                    xdiff = min_distance.sqrt() - xdiff;
-                } else if xdiff < 0.0 {
-                    xdiff = -min_distance.sqrt() - xdiff;
-                }
-    
-                if ydiff >= 0.0 {
-                    ydiff = min_distance.sqrt() - ydiff;
-                } else if ydiff < 0.0 {
-                    ydiff = -min_distance.sqrt() - ydiff;
-                }
-
-                distance_x += xdiff;
-                distance_y += ydiff;
-
+              num_close +=1.0;
+              let mut xdiff = current_cow.x - cow.x;
+              let mut ydiff = current_cow.y - cow.y;
+  
+              if xdiff >= 0.0 {
+                  xdiff = min_distance.sqrt() - xdiff;
+              } else if xdiff < 0.0 {
+                  xdiff = -min_distance.sqrt() - xdiff;
+              }
+  
+              if ydiff >= 0.0 {
+                  ydiff = min_distance.sqrt() - ydiff;
+              } else if ydiff < 0.0 {
+                  ydiff = -min_distance.sqrt() - ydiff;
+              }
+              distance_x += xdiff;
+              distance_y += ydiff;
             }
-
             if num_close == 0.0 {
-
+  
             } else {
-                self.x_velocity -= distance_x / 5.0;
-                self.y_velocity -= distance_y / 5.0;
+              current_cow.x_velocity -= distance_x / 5.0;
+              current_cow.y_velocity -= distance_y / 5.0;
             }
+          }
+  
+        });
+  
+        Cow {
+          id:cow.id,
+          x:cow.x,
+          y:cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: cow.constraints,
+          x_velocity: current_cow.x_velocity,
+          y_velocity: current_cow.y_velocity,
         }
-    }
-
-    fn move_closer(&mut self, boids: &Vec<Cow>, distance: f64) {
-        if boids.len() < 1 {
-            // do nothing
-        } else {
-            let mut avg_x = 0.0;
-            let mut avg_y = 0.0;
-
-            for boid in boids.iter() {
-                if boid.x == self.x && boid.y == self.y {
-                    continue;
-                }
-                if self.distance(*boid) > distance {
-                    continue;
-                }
-
-                avg_x += self.x - boid.x;
-                avg_y += self.y - boid.y;
-            }
-
-            avg_x /= boids.len() as f64;
-            avg_y /= boids.len() as f64;
-
-            let avg_distance = (avg_x*avg_x+avg_y*avg_y).sqrt() * -1.0;
-
-            if avg_distance == 0.0 {
-             
-            } else {
-                self.x_velocity = (self.x_velocity + (avg_x/avg_distance) * 0.15).min(self.constraints.max_velocity);
-                self.y_velocity = (self.y_velocity + (avg_y/avg_distance) * 0.15).min(self.constraints.max_velocity);
-
-            }
-
+  
+      }).collect();
+  
+      /*
+      cows_list_move_away.iter().for_each(|cow| {
+        println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
+      });
+      */
+  
+      let cows_list_moving: LinkedList<Cow> = cows_list_move_away.iter().map(|cow| {
+        let mut current_cow = Cow { // self
+          id:cow.id,
+          x:cow.x,
+          y:cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: cow.constraints,
+          x_velocity: cow.x_velocity,
+          y_velocity: cow.y_velocity,
+        };
+        current_cow.x += current_cow.x_velocity;
+        current_cow.y += current_cow.y_velocity;
+  
+        if current_cow.x <= current_cow.constraints.border || current_cow.x >= current_cow.constraints.width - current_cow.constraints.border {
+          current_cow.x -= current_cow.x_velocity;
+          current_cow.x = current_cow.x.max(current_cow.constraints.border);
+          current_cow.x = current_cow.x.min(current_cow.constraints.width - current_cow.constraints.border);
+          current_cow.x_velocity = -current_cow.x_velocity;
+          current_cow.x += current_cow.x_velocity;
         }
-    }
-
-    fn move_with(&mut self, boids: &Vec<Cow>, distance: f64) {
-        if boids.len() < 1 {
-            // do nothing
-        } else {
-            let mut avg_x = 0.0;
-            let mut avg_y = 0.0;
-
-            for boid in boids.iter() {
-                if boid.x == self.x && boid.y == self.y {
-                    continue;
-                }
-                if self.distance(*boid) > distance {
-                    continue;
-                }
-
-                avg_x += boid.x_velocity;
-                avg_y += boid.y_velocity;
-            }
-
-            avg_x /= boids.len() as f64;
-            avg_y /= boids.len() as f64;
-
-            let avg_distance = (avg_x*avg_x+avg_y*avg_y).sqrt() * 1.0;
-
-            if avg_distance == 0.0 {
-             
-            } else {
-                self.x_velocity = (self.x_velocity + (avg_x/avg_distance) * 0.05).min(self.constraints.max_velocity);
-                self.y_velocity = (self.y_velocity + (avg_y/avg_distance) * 0.05).min(self.constraints.max_velocity);
-
-            }
-
+        if current_cow.y <= current_cow.constraints.border || current_cow.y >= current_cow.constraints.height - current_cow.constraints.border {
+          current_cow.y -= current_cow.y_velocity;
+          current_cow.y = current_cow.y.max(current_cow.constraints.border);
+          current_cow.y = current_cow.y.min(current_cow.constraints.height - current_cow.constraints.border);
+          current_cow.y_velocity = -current_cow.y_velocity;
+          current_cow.y += current_cow.y_velocity
         }
-    }
+  
+        Cow {
+          id:current_cow.id,
+          x:current_cow.x,
+          y:current_cow.y,
+          former_x:cow.former_x,
+          former_y:cow.former_y,
+          constraints: current_cow.constraints,
+          x_velocity: current_cow.x_velocity,
+          y_velocity: current_cow.y_velocity,
+        }
+  
+      }).collect();
+  
+      cows_list_moving.iter().for_each(|cow| {
 
-    fn draw(&mut self, context: &web_sys::CanvasRenderingContext2d, former_x: f64, former_y: f64) {
+        //println!("🤖 {}: {} {} {} {}", cow.id, cow.x, cow.y, cow.x_velocity, cow.y_velocity);
 
+        
         let draw_circle = |circle: Circle|{
             context.begin_path();
             context.arc(
@@ -213,8 +376,8 @@ impl Cow {
         };
 
         let previous_circle = Circle {
-            x: former_x,
-            y: former_y,
+            x: cow.former_x,
+            y: cow.former_y,
             radius: 4.0,
             color: String::from("white"),
             border_width: 2.0,
@@ -223,8 +386,8 @@ impl Cow {
         };
 
         let current_circle = Circle {
-            x: former_x,
-            y: former_y,
+            x: cow.x,
+            y: cow.y,
             radius: 4.0,
             color: String::from("green"),
             border_width: 1.0,
@@ -234,150 +397,24 @@ impl Cow {
 
         draw_circle(previous_circle);
         draw_circle(current_circle);
+        
 
-
+        //println!("🤖 {}: {} {} {} {}", cow.id, cow.x, cow.y, cow.x_velocity, cow.y_velocity);
+        
+    
+        
+      });
+  
+      cows_list = cows_list_moving;
+      
+      //thread::sleep(Duration::from_millis(100));
+      //============================================
+      index+=1;
     }
-
-
-}
-
-
-
-// Called by our JS entry point to run the example
-#[wasm_bindgen(start)]
-pub fn run() -> Result<(), JsValue> {
-    // Use `web_sys`'s global `window` function to get a handle on the global
-    // window object.
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().expect("should have a document on window");
-    let body = document.body().expect("document should have a body");
-
-    let canvas = document
-        .get_element_by_id("canvas")
-        .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()?;
-    
-    let context = canvas
-        .get_context("2d")?
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
-
-
-
-    let constraints = Constraints {
-        border:      5.0,
-		width:       800.0,
-		height:      800.0,
-		max_velocity: 5.0
-    };
-
-    let mut bob = Cow {
-        //nick_name: String::from("Bob"),
-        x:10.0,
-        y:10.0,
-        constraints: constraints, 
-        x_velocity: 1.0, 
-        y_velocity: -1.0
-    };
-    
-    bob.moving();
-    //bob.moving();
-    //bob.moving();
-
-    let mut sam = Cow {
-        //nick_name: String::from("Sam"),
-        x:30.0,
-        y:30.0,
-        constraints: constraints, 
-        x_velocity: 1.0, 
-        y_velocity: -1.0
-    };
-
-
-    //bob.x =23.0;
-    //bob.x_velocity = 4.0;
-
-    //let message = String::from(bob.x.to_string());
-
-    // Manufacture the element we're gonna append
-    let h1 = document.create_element("h1")?;
     h1.set_text_content(Some("👋 Hello from Rust! 🦀"));
 
-    let h2 = document.create_element("h2")?;
-    h2.set_text_content(Some(&bob.x.to_string()));
-
-    let mut cows_list: Vec<Cow> = vec![];
-
-    cows_list.push(bob);
-    cows_list.push(sam);
-
-
-    /*
-    let mut i = 0;
-
-    while i < 30 {
-        let cow = Cow {
-            x:10.0,
-            y:100.0,
-            constraints: constraints, 
-            x_velocity: 1.0, 
-            y_velocity: -1.0
-        };
-        i = i + 1;
-        cows_list.push(cow)
-
-    }
-    */
-
-
-    body.append_child(&h1)?;
-    body.append_child(&h2)?;
-
-    // Try only with the existing Cow
-    while true {
-
-        let mut former_x = bob.x;
-        let mut former_y = bob.y;
+    //while true {}
     
-        bob.move_with(&cows_list, 300.0);
-        bob.move_closer(&cows_list, 300.0);
-        bob.move_away(&cows_list, 15.0);
-        bob.moving();
-    
-        bob.draw(&context, former_x, former_y);
-    
-        former_x = sam.x;
-        former_y = sam.y;
-    
-        sam.move_with(&cows_list, 300.0);
-        sam.move_closer(&cows_list, 300.0);
-        sam.move_away(&cows_list, 15.0);
-        sam.moving();
-    
-        sam.draw(&context, former_x, former_y);
-    
-        thread::sleep(Duration::from_millis(100));
-
-        /*
-        let cows_iter = cows_list.iter();
-
-        for cow in cows_iter {
-
-            cow.move_with(&cows_list, 300.0);
-            cow.move_closer(&cows_list, 300.0);
-
-            cow.move_away(&cows_list, 15.0);
-            cow.moving();
-        
-            cow.draw(&canvas, &context, former_x, former_y);
-        }
-        */
-    }
-    
-    
-
-
-
 
     Ok(())
 }
