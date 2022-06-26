@@ -44,57 +44,7 @@ impl Cow {
 
 }
 
-fn draw(context: &web_sys::CanvasRenderingContext2d, cow: Cow) {
 
-    let draw_circle = |circle: Circle|{
-      context.begin_path();
-      context.arc(
-          circle.x.into(),
-          circle.y.into(),
-          circle.radius.into(),
-          0.0,
-          2.0 * std::f64::consts::PI,
-      ).unwrap();
-
-      context.set_fill_style(&circle.color.into());
-      context.fill();
-
-      context.set_line_width(circle.border_width.into());
-      context.set_stroke_style(&circle.border_color.into());
-
-      context.stroke();
-      
-  };
-
-  let previous_circle = Circle {
-      x: cow.former_x,
-      y: cow.former_y,
-      radius: 4.0,
-      color: String::from("white"),
-      border_width: 2.0,
-      border_color: 
-      String::from("white"),
-  };
-
-  let current_circle = Circle {
-      x: cow.x,
-      y: cow.y,
-      radius: 4.0,
-      color: String::from("green"),
-      border_width: 1.0,
-      border_color: 
-      String::from("green"),
-  };
-
-  draw_circle(previous_circle);
-  let mut i = 0;
-  while i < 10000 {
-      i = i + 1;
-
-  }
-  draw_circle(current_circle);
-
-}
 
 // Called by our JS entry point to run the example
 #[wasm_bindgen(start)]
@@ -104,7 +54,14 @@ pub fn run() -> Result<(), JsValue> {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
- 
+
+    
+    let h1 = document.create_element("h1")?;
+    h1.set_text_content(Some("👋 Hello from Rust! 🦀"));
+
+    let h2 = document.create_element("h2")?;
+    h2.set_text_content(Some("azerty"));
+
     let canvas = document
         .get_element_by_id("canvas")
         .unwrap()
@@ -127,7 +84,7 @@ pub fn run() -> Result<(), JsValue> {
     
     let mut i = 0;
     
-    while i < 10 {
+    while i < 55 {
         let cow = Cow {
             id:i,
             x:10.0,
@@ -144,8 +101,7 @@ pub fn run() -> Result<(), JsValue> {
 
 
     let mut index = 0;
-    while index < 3000 {
-    //  while true {
+    while index < 5 {
       //============================================
   
       let cows_list_move_with: LinkedList<Cow> = cows_list.iter().map(|cow| {
@@ -206,13 +162,11 @@ pub fn run() -> Result<(), JsValue> {
         }
       }).collect();
   
-      
+      /*
       cows_list_move_with.iter().for_each(|cow| {
-        //draw(&context, *cow);
-        //println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
-
+        println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
       });
-      
+      */
   
       let cows_list_move_closer: LinkedList<Cow> = cows_list_move_with.iter().map(|cow| {
   
@@ -280,12 +234,11 @@ pub fn run() -> Result<(), JsValue> {
   
       }).collect();
   
-      
+      /*
       cows_list_move_closer.iter().for_each(|cow| {
-        //println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
-        //draw(&context, *cow);
+        println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
       });
-      
+      */
   
   
       let cows_list_move_away: LinkedList<Cow> = cows_list_move_closer.iter().map(|cow| {
@@ -353,12 +306,11 @@ pub fn run() -> Result<(), JsValue> {
   
       }).collect();
   
-      
+      /*
       cows_list_move_away.iter().for_each(|cow| {
-        //println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
-        //draw(&context, *cow);
+        println!("🤖 {}: {} {}", cow.id, cow.x, cow.y);
       });
-      
+      */
   
       let cows_list_moving: LinkedList<Cow> = cows_list_move_away.iter().map(|cow| {
         let mut current_cow = Cow { // self
@@ -401,35 +353,62 @@ pub fn run() -> Result<(), JsValue> {
         }
   
       }).collect();
-      
-      //thread::sleep(Duration::from_millis(100));
-
+  
       cows_list_moving.iter().for_each(|cow| {
-        draw(&context, *cow);
 
         //println!("🤖 {}: {} {} {} {}", cow.id, cow.x, cow.y, cow.x_velocity, cow.y_velocity);
 
+        
+        let draw_circle = |circle: Circle|{
+            context.begin_path();
+            context.arc(
+                circle.x.into(),
+                circle.y.into(),
+                circle.radius.into(),
+                0.0,
+                2.0 * std::f64::consts::PI,
+            ).unwrap();
 
+            context.set_fill_style(&circle.color.into());
+            context.fill();
 
+            context.set_line_width(circle.border_width.into());
+            context.set_stroke_style(&circle.border_color.into());
+
+            context.stroke();
+            
+        };
+
+        let previous_circle = Circle {
+            x: cow.former_x,
+            y: cow.former_y,
+            radius: 4.0,
+            color: String::from("white"),
+            border_width: 2.0,
+            border_color: 
+            String::from("white"),
+        };
+
+        let current_circle = Circle {
+            x: cow.x,
+            y: cow.y,
+            radius: 4.0,
+            color: String::from("green"),
+            border_width: 1.0,
+            border_color: 
+            String::from("green"),
+        };
+
+        draw_circle(previous_circle);
+        draw_circle(current_circle);
         
 
         //println!("🤖 {}: {} {} {} {}", cow.id, cow.x, cow.y, cow.x_velocity, cow.y_velocity);
         
-        
+    
         
       });
   
-      
-
-      /*
-      let mut i = 0;
-      while i < 10000 {
-          i = i + 1;
-
-      }
-      */
-
-
       cows_list = cows_list_moving;
       
       //thread::sleep(Duration::from_millis(100));
