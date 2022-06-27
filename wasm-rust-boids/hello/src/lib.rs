@@ -1,7 +1,22 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use std::{thread, time::Duration};
+//use std::{thread, time::Duration};
 use std::collections::LinkedList;
+
+use web_sys;
+
+// Imports console.log()
+#[wasm_bindgen]
+extern "C" {
+    fn setInterval(closure: &Closure<dyn FnMut()>, time: u32) -> i32;
+    fn clearInterval(id: i32);
+
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+
+const ANIM_DELAY: f64 = 0.025;  // 0.025 sec -> 40 FPS
 
 
 struct Circle {
@@ -142,9 +157,13 @@ pub fn run() -> Result<(), JsValue> {
         cows_list.push_back(cow)
     }
 
+    let cb = Closure::wrap(Box::new(move || {
+      log("interval elapsed!");
+    }) as Box<dyn FnMut()>);
+
 
     let mut index = 0;
-    while index < 3000 {
+    while index < 30000 {
     //  while true {
       //============================================
   
@@ -406,20 +425,24 @@ pub fn run() -> Result<(), JsValue> {
 
       cows_list_moving.iter().for_each(|cow| {
         draw(&context, *cow);
+        log("interval elapsed!");
 
         //println!("🤖 {}: {} {} {} {}", cow.id, cow.x, cow.y, cow.x_velocity, cow.y_velocity);
 
-
-
-        
-
         //println!("🤖 {}: {} {} {} {}", cow.id, cow.x, cow.y, cow.x_velocity, cow.y_velocity);
-        
-        
-        
       });
   
-      
+
+      /*
+      let cb = Closure::wrap(Box::new(move || {
+        log("interval elapsed!");
+      }) as Box<dyn FnMut()>);
+    
+      setInterval(&cb, (ANIM_DELAY*1000.0) as u32);
+      */
+
+      cows_list = cows_list_moving;
+
 
       /*
       let mut i = 0;
@@ -429,8 +452,14 @@ pub fn run() -> Result<(), JsValue> {
       }
       */
 
+      /*
+      let cb = Closure::wrap(Box::new(move || {
+        log("interval elapsed!");
+      }) as Box<dyn FnMut()>);
+    
 
-      cows_list = cows_list_moving;
+      window.set_interval_with_callback_and_timeout_and_arguments_0(&cb,(ANIM_DELAY*1000.0) as i32);
+      */
       
       //thread::sleep(Duration::from_millis(100));
       //============================================
